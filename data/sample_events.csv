@@ -1,0 +1,6 @@
+timestamp,level,service,message
+2026-07-01T10:00:00Z,INFO,auth,User login
+2026-07-01T10:05:00Z,INFO,auth,User logout
+2026-07-01T11:00:00Z,WARN,api,Request timeout
+not-a-timestamp,ERROR,db,Connection failed
+2026-07-01T12:00:00Z,,web,Missing level field
