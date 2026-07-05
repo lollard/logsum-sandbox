@@ -1,0 +1,3 @@
+timestamp,level,service,message
+2026-07-01T10:00:00Z, warn , Auth ,Padded level and service
+2026-07-01T11:00:00Z,WARN,auth,Already normalised

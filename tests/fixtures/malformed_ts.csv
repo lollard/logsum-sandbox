@@ -1,0 +1,4 @@
+timestamp,level,service,message
+2026-07-01T10:00:00Z,INFO,auth,Good row before bad
+not-a-timestamp,INFO,auth,Bad timestamp row
+2026-07-01T11:00:00Z,INFO,auth,Good row after bad

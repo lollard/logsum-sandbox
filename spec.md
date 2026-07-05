@@ -62,3 +62,6 @@ logsum [--input FILE] [--output FILE] [--strict]
 
 ## 11. Signed off
 Vladimir Ermishin, 7/3/2026
+
+## 12. Implementation notes
+No surprises
