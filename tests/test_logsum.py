@@ -279,6 +279,53 @@ def test_output_flag_stdout_is_empty(tmp_path):
     assert result.stdout == ""
 
 
+# ── --min-count filter ───────────────────────────────────────────────────────
+# normal.csv groups: auth/INFO/2026-07-01 count=2, api/WARN/2026-07-01 count=1,
+#                    auth/INFO/2026-07-02 count=1
+
+
+def test_min_count_hides_groups_below_threshold():
+    result = run_logsum("--min-count", "2", input_file=FIXTURES / "normal.csv")
+    assert result.returncode == 0
+    rows = parse_output(result.stdout)
+    assert all(int(r["count"]) >= 2 for r in rows)
+    assert len(rows) == 1
+
+
+def test_min_count_keeps_group_at_exact_threshold():
+    result = run_logsum("--min-count", "2", input_file=FIXTURES / "normal.csv")
+    rows = parse_output(result.stdout)
+    grp = find_group(rows, date="2026-07-01", level="INFO", service="auth")
+    assert grp is not None
+    assert int(grp["count"]) == 2
+
+
+def test_min_count_one_includes_all_groups():
+    result = run_logsum("--min-count", "1", input_file=FIXTURES / "normal.csv")
+    rows = parse_output(result.stdout)
+    assert len(rows) == 3
+
+
+def test_min_count_above_all_counts_outputs_header_only():
+    result = run_logsum("--min-count", "99", input_file=FIXTURES / "normal.csv")
+    assert result.returncode == 0
+    rows = parse_output(result.stdout)
+    assert rows == []
+    assert "date" in result.stdout
+
+
+def test_min_count_non_integer_exits_two():
+    result = run_logsum("--min-count", "foo", input_file=FIXTURES / "normal.csv")
+    assert result.returncode == 2
+
+
+def test_min_count_with_empty_input_exits_zero():
+    result = run_logsum("--min-count", "2", input_file=FIXTURES / "empty.csv")
+    assert result.returncode == 0
+    assert parse_output(result.stdout) == []
+    assert result.stderr == ""
+
+
 def test_default_input_path_is_data_events_csv():
     # Invoke without --input; the CLI must attempt data/events.csv.
     # We only assert it does NOT exit with code 2 (usage error) –

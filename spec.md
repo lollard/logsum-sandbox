@@ -38,7 +38,7 @@ Write the header row only. Exit 0. No error or warning.
 ## 9. CLI flags and exit codes
 
 ```
-logsum [--input FILE] [--output FILE] [--strict]
+logsum [--input FILE] [--output FILE] [--strict] [--min-count N]
 ```
 
 | Flag | Default | Description |
@@ -46,6 +46,7 @@ logsum [--input FILE] [--output FILE] [--strict]
 | `--input FILE`  | `data/events.csv` | Path to input CSV. |
 | `--output FILE` | stdout            | Path to output CSV. |
 | `--strict`      | off               | Treat malformed rows as fatal errors. |
+| `--min-count N` | (all groups)      | Only output groups whose count ≥ N. |
 
 | Code | Meaning |
 |------|---------|

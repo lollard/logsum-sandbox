@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import sys
 from datetime import datetime
@@ -36,25 +37,22 @@ def summarise(reader: csv.DictReader, strict: bool) -> tuple[list[dict], bool]:
                 return [], True
             continue
 
+        date = ts.date().isoformat()
         level = (row.get("level") or "").strip().upper() or "UNKNOWN"
         service = (row.get("service") or "").strip().lower()
-        key = (ts.date().isoformat(), level, service)
+        key = (date, level, service)
 
-        if key not in groups:
-            groups[key] = {
-                "date": key[0],
-                "level": level,
-                "service": service,
-                "count": 0,
-                "first_seen": ts,
-                "last_seen": ts,
-            }
-        g = groups[key]
-        g["count"] += 1
-        if ts < g["first_seen"]:
-            g["first_seen"] = ts
-        if ts > g["last_seen"]:
-            g["last_seen"] = ts
+        group = groups.setdefault(key, {
+            "date": date,
+            "level": level,
+            "service": service,
+            "count": 0,
+            "first_seen": ts,
+            "last_seen": ts,
+        })
+        group["count"] += 1
+        group["first_seen"] = min(group["first_seen"], ts)
+        group["last_seen"] = max(group["last_seen"], ts)
 
     output_rows = [
         {
@@ -72,19 +70,19 @@ def summarise(reader: csv.DictReader, strict: bool) -> tuple[list[dict], bool]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="logsum", description="Summarise event log CSV files.")
-    parser.add_argument("input_pos", nargs="?", metavar="INPUT", help="Input CSV (positional).")
-    parser.add_argument("output_pos", nargs="?", metavar="OUTPUT", help="Output CSV (positional).")
     parser.add_argument("--input", default=None, help="Input CSV file. Default: data/events.csv")
     parser.add_argument("--output", default=None, help="Output CSV file. Default: stdout")
     parser.add_argument("--strict", action="store_true", help="Treat malformed rows as fatal.")
+    parser.add_argument("--min-count", type=int, default=None, metavar="N",
+                        help="Only output groups with count >= N.")
 
     try:
         args = parser.parse_args(argv)
     except SystemExit:
         return 2
 
-    input_path = args.input_pos or args.input or "data/events.csv"
-    output_path = args.output_pos or args.output  # None → stdout
+    input_path = args.input or "data/events.csv"
+    output_path = args.output  # None → stdout
 
     try:
         in_fh = open(input_path, newline="", encoding="utf-8")
@@ -95,19 +93,22 @@ def main(argv: list[str] | None = None) -> int:
     with in_fh:
         rows, had_error = summarise(csv.DictReader(in_fh), args.strict)
 
+    if args.min_count is not None:
+        rows = [r for r in rows if r["count"] >= args.min_count]
+
     if had_error and args.strict:
         return 1
 
+    out_ctx = (
+        open(output_path, "w", newline="", encoding="utf-8")
+        if output_path
+        else contextlib.nullcontext(sys.stdout)
+    )
     try:
-        if output_path:
-            out_fh = open(output_path, "w", newline="", encoding="utf-8")
-        else:
-            out_fh = sys.stdout
-        writer = csv.DictWriter(out_fh, fieldnames=_OUTPUT_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-        if output_path:
-            out_fh.close()
+        with out_ctx as out_fh:
+            writer = csv.DictWriter(out_fh, fieldnames=_OUTPUT_FIELDS)
+            writer.writeheader()
+            writer.writerows(rows)
     except OSError as exc:
         sys.stderr.write(f"ERROR: {exc}\n")
         return 1
